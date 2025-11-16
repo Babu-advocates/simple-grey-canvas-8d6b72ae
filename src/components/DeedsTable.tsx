@@ -254,10 +254,7 @@ const DeedsTable = ({ sectionTitle = "Description of Documents Scrutinized", tab
       nature_of_doc: "",
       table_type: tableType,
       user_id: null,
-      custom_fields: {
-        extent: "",
-        surveyNo: ""
-      }
+      custom_fields: {}
     };
 
     const { error } = await supabase.from("deeds").insert(newDeed);
@@ -366,32 +363,71 @@ const DeedsTable = ({ sectionTitle = "Description of Documents Scrutinized", tab
 
 
   const handleUpdateDeed = useCallback((id: string, field: keyof Deed, value: string | Record<string, string>) => {
-    // Update local state immediately for responsive UI
-    setDeeds((prev) =>
-      prev.map((deed) =>
-        deed.id === id ? { ...deed, [field]: value } : deed
-      )
-    );
+    // When deed_type changes, initialize custom_fields from template
+    if (field === "deed_type" && typeof value === "string") {
+      const template = deedTemplates.find(t => t.deed_type === value);
+      const customPlaceholders = template?.custom_placeholders || {};
+      
+      // Initialize custom_fields with empty strings for all placeholder keys
+      const initializedCustomFields: Record<string, string> = {};
+      Object.keys(customPlaceholders).forEach(key => {
+        initializedCustomFields[key] = "";
+      });
 
-    // Clear any existing timeout for this field
-    const timeoutKey = `${id}-${field}`;
-    if (updateTimeouts.current[timeoutKey]) {
-      clearTimeout(updateTimeouts.current[timeoutKey]);
-    }
+      // Update local state with both deed_type and initialized custom_fields
+      setDeeds((prev) =>
+        prev.map((deed) =>
+          deed.id === id 
+            ? { ...deed, [field]: value, custom_fields: initializedCustomFields } 
+            : deed
+        )
+      );
 
-    // Debounce the database update
-    updateTimeouts.current[timeoutKey] = setTimeout(async () => {
-      const { error } = await supabase
-        .from("deeds")
-        .update({ [field]: value })
-        .eq("id", id);
-
-      if (error) {
-        console.error("Error updating deed:", error);
-        toast.error("Failed to update deed");
+      // Update database with both fields
+      const timeoutKey = `${id}-${field}`;
+      if (updateTimeouts.current[timeoutKey]) {
+        clearTimeout(updateTimeouts.current[timeoutKey]);
       }
-    }, 500); // Wait 500ms after user stops typing
-  }, []);
+
+      updateTimeouts.current[timeoutKey] = setTimeout(async () => {
+        const { error } = await supabase
+          .from("deeds")
+          .update({ [field]: value, custom_fields: initializedCustomFields })
+          .eq("id", id);
+
+        if (error) {
+          console.error("Error updating deed:", error);
+          toast.error("Failed to update deed");
+        }
+      }, 500);
+    } else {
+      // Normal field update for other fields
+      setDeeds((prev) =>
+        prev.map((deed) =>
+          deed.id === id ? { ...deed, [field]: value } : deed
+        )
+      );
+
+      // Clear any existing timeout for this field
+      const timeoutKey = `${id}-${field}`;
+      if (updateTimeouts.current[timeoutKey]) {
+        clearTimeout(updateTimeouts.current[timeoutKey]);
+      }
+
+      // Debounce the database update
+      updateTimeouts.current[timeoutKey] = setTimeout(async () => {
+        const { error } = await supabase
+          .from("deeds")
+          .update({ [field]: value })
+          .eq("id", id);
+
+        if (error) {
+          console.error("Error updating deed:", error);
+          toast.error("Failed to update deed");
+        }
+      }, 500);
+    }
+  }, [deedTemplates]);
 
   const handleCustomFieldChange = useCallback((deedId: string, fieldKey: string, value: string) => {
     // Update local state immediately
