@@ -674,8 +674,20 @@ const Index = () => {
       const currentPlaceholders = { ...placeholders };
       const currentDocuments = [...documents];
 
-      // Prepare deeds payload grouped by table type from current state
-      const minify = (d: Deed) => ({
+      // Fetch the latest deeds from database (since DeedsTable manages its own state)
+      const { data: allDeeds, error: deedsError } = await supabase
+        .from("deeds")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (deedsError) {
+        console.error("Error fetching deeds:", deedsError);
+        toast.error("Failed to fetch current deeds");
+        return;
+      }
+
+      // Prepare deeds payload grouped by table type from database
+      const minify = (d: any) => ({
         deed_type: d.deed_type,
         executed_by: d.executed_by,
         in_favour_of: d.in_favour_of,
@@ -686,10 +698,10 @@ const Index = () => {
       });
 
       const draftDeedsPayload = {
-        table: deeds.map(minify),
-        table2: deedsTable2.map(minify),
-        table3: deedsTable3.map(minify),
-        table4: deedsTable4.map(minify),
+        table: (allDeeds || []).filter(d => !d.table_type || d.table_type === 'table').map(minify),
+        table2: (allDeeds || []).filter(d => d.table_type === 'table2').map(minify),
+        table3: (allDeeds || []).filter(d => d.table_type === 'table3').map(minify),
+        table4: (allDeeds || []).filter(d => d.table_type === 'table4').map(minify),
       } as any;
       
       console.log("Saving draft with data:", {
