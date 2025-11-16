@@ -97,7 +97,10 @@ const Index = () => {
           if (state.draftName) {
             setDocumentName(state.draftName);
           }
-          // Deeds will be loaded from the database
+          // Restore deeds from draft data
+          if (state.draftData.deeds) {
+            await restoreDeedsFromDraft(state.draftData.deeds);
+          }
           toast.success("Draft loaded successfully");
         } else {
           await clearAllDeedsForFreshTemplate();
