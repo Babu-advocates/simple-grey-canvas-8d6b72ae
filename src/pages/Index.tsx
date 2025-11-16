@@ -735,6 +735,7 @@ const Index = () => {
             draft_name: draftName,
             placeholders: currentPlaceholders as any,
             documents: currentDocuments as any,
+            deeds: draftDeedsPayload as any,
           })
           .select()
           .single();
